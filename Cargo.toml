@@ -1,0 +1,25 @@
+[package]
+name = "ongeki-io"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+lazy_static = '1.4.0'
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.115"
+toml = "0.8.12"
+intertrait = "0.2"
+linkme = "0.2"
+
+
+[dependencies.windows]
+version = "0.54.0"
+features = [
+    "Win32_System_Console",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Input_XboxController",
+    "Win32_UI_WindowsAndMessaging",
+]
