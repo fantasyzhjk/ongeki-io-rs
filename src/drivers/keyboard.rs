@@ -2,7 +2,7 @@ use crate::{config::KeyBoardConfig, enums::{GameBtn, HResult, OpBtn}};
 use intertrait::cast_to;
 use windows::Win32::UI::Input::KeyboardAndMouse;
 
-use super::{ButtonDriver, Driver};
+use super::{ButtonDriver, Driver, PollDriver};
 
 #[derive(Debug)]
 pub struct KeyBoard {
@@ -23,8 +23,9 @@ impl KeyBoard {
     }
 }
 
+
 #[cast_to]
-impl ButtonDriver for KeyBoard {
+impl PollDriver for KeyBoard {
     fn poll(&mut self) -> HResult {
         self.op_btns = 0;
 
@@ -74,7 +75,10 @@ impl ButtonDriver for KeyBoard {
 
         HResult::Ok
     }
+}
 
+#[cast_to]
+impl ButtonDriver for KeyBoard {
     fn op_btns(&self) -> u8 {
         self.op_btns
     }

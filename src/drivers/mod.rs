@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::ops::{Deref, DerefMut};
 
 use crate::config::Config;
+use crate::drivers::hid::HID;
 use crate::enums::HResult;
 
 trait Driver: CastFrom {}
@@ -12,20 +13,23 @@ trait Driver: CastFrom {}
 mod keyboard;
 mod led_debug;
 mod mouse;
+mod hid;
 
 use self::keyboard::KeyBoard;
 use self::led_debug::LEDebug;
 use self::mouse::Mouse;
 
-trait ButtonDriver {
+trait PollDriver {
     fn poll(&mut self) -> HResult;
+}
+
+trait ButtonDriver {
     fn op_btns(&self) -> u8;
     fn left_btns(&self) -> u8;
     fn right_btns(&self) -> u8;
 }
 
 trait LeverDriver {
-    fn poll(&mut self) -> HResult;
     fn lever(&self) -> i16;
 }
 
@@ -62,14 +66,14 @@ impl Drivers {
         if config.led_debug.enabled {
             self.0.push(Box::new(LEDebug::new()));
         }
+        if config.hid.enabled {
+            self.0.push(Box::new(HID::new(config.hid.clone())));
+        }
     }
 
     pub fn poll(&mut self) {
         for driver in self.0.iter_mut() {
-            if let Some(d) = driver.deref_mut().cast::<dyn ButtonDriver>() {
-                d.poll();
-            }
-            if let Some(d) = driver.deref_mut().cast::<dyn LeverDriver>() {
+            if let Some(d) = driver.deref_mut().cast::<dyn PollDriver>() {
                 d.poll();
             }
         }

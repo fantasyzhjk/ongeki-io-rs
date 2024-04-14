@@ -3,7 +3,7 @@ use intertrait::cast_to;
 use windows::Win32::UI::WindowsAndMessaging::{self, SM_CXSCREEN};
 use windows::Win32::Foundation::POINT;
 
-use super::{Driver, LeverDriver};
+use super::{Driver, LeverDriver, PollDriver};
 
 #[derive(Debug, Default)]
 pub struct Mouse {
@@ -17,7 +17,7 @@ impl Mouse {
 }
 
 #[cast_to]
-impl LeverDriver for Mouse {
+impl PollDriver for Mouse {
     fn poll(&mut self) -> HResult {
         unsafe {
             let mut p = POINT::default();
@@ -37,7 +37,10 @@ impl LeverDriver for Mouse {
         }
         HResult::Ok
     }
+}
 
+#[cast_to]
+impl LeverDriver for Mouse {
     fn lever(&self) -> i16 {
         self.lever
     }
