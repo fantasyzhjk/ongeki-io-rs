@@ -21,21 +21,21 @@ use self::keyboard::KeyBoardIO;
 use self::led_debug::LEDebug;
 use self::mouse::MouseIO;
 
-trait PollDriver: Driver {
+trait PollDriver {
     fn poll(&mut self) -> HResult;
 }
 
-trait ButtonDriver: Driver {
+trait ButtonDriver {
     fn op_btns(&self) -> u8;
     fn left_btns(&self) -> u8;
     fn right_btns(&self) -> u8;
 }
 
-trait LeverDriver: Driver {
+trait LeverDriver {
     fn lever(&self) -> i16;
 }
 
-trait LEDriver: Driver {
+trait LEDriver {
     fn set_led(&mut self, data: u32);
 }
 
