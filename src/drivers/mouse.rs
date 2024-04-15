@@ -1,23 +1,26 @@
-use crate::enums::HResult;
-use intertrait::cast_to;
+use dyn_dyn::dyn_dyn_impl;
 use windows::Win32::UI::WindowsAndMessaging::{self, SM_CXSCREEN};
 use windows::Win32::Foundation::POINT;
 
-use super::{Driver, LeverDriver, PollDriver};
+use crate::drivers::{Driver, LeverDriver, PollDriver};
+use crate::enums::HResult;
+
 
 #[derive(Debug, Default)]
-pub struct Mouse {
+pub struct MouseIO {
     lever: i16,
 }
 
-impl Mouse {
+impl MouseIO {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-#[cast_to]
-impl PollDriver for Mouse {
+#[dyn_dyn_impl(Driver, PollDriver, LeverDriver)]
+impl Driver for MouseIO {}
+
+impl PollDriver for MouseIO {
     fn poll(&mut self) -> HResult {
         unsafe {
             let mut p = POINT::default();
@@ -39,11 +42,9 @@ impl PollDriver for Mouse {
     }
 }
 
-#[cast_to]
-impl LeverDriver for Mouse {
+impl LeverDriver for MouseIO {
     fn lever(&self) -> i16 {
         self.lever
     }
 }
 
-impl Driver for Mouse {}

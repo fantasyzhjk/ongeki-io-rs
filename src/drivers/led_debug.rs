@@ -1,6 +1,6 @@
-use intertrait::cast_to;
-
 use super::{Driver, LEDriver};
+
+use dyn_dyn::dyn_dyn_impl;
 
 #[derive(Debug, Default)]
 pub struct LEDebug;
@@ -11,7 +11,9 @@ impl LEDebug {
     }
 }
 
-#[cast_to]
+#[dyn_dyn_impl(Driver, LEDriver)]
+impl Driver for LEDebug {}
+
 impl LEDriver for LEDebug {
     fn set_led(&mut self, data: u32) {
         println!(
@@ -38,4 +40,3 @@ impl LEDriver for LEDebug {
     }
 }
 
-impl Driver for LEDebug {}

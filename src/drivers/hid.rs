@@ -1,39 +1,36 @@
-use std::{
-    io::{Cursor, Write},
-    sync::mpsc::{self, Receiver},
-    thread,
-};
-
 use crate::{
     config::HIDConfig,
     enums::{GameBtn, HResult},
 };
 
-use byteorder::WriteBytesExt;
-use hidapi::HidDevice;
-use intertrait::cast_to;
-use pretty_hex::PrettyHex;
-
 use super::{ButtonDriver, Driver, LEDriver, LeverDriver, PollDriver};
 
-#[derive(Debug)]
-pub struct HID {
+use byteorder::WriteBytesExt;
+use dyn_dyn::dyn_dyn_impl;
+use hidapi_rusb::{HidApi, HidDevice};
+use std::io::{Cursor, Write};
+
+pub struct HidIO {
     lever: i16,
     left_btns: u8,
     right_btns: u8,
     config: HIDConfig,
+    api: HidApi,
     device: Option<HidDevice>,
 }
 
-unsafe impl Sync for HID {}
+#[dyn_dyn_impl(Driver, PollDriver, ButtonDriver, LeverDriver, LEDriver)]
+impl Driver for HidIO {}
+unsafe impl Sync for HidIO {}
 
-impl HID {
+impl HidIO {
     pub fn new(config: HIDConfig) -> Self {
-        let mut s = HID {
+        let mut s = HidIO {
             lever: 0,
             left_btns: 0,
             right_btns: 0,
             config,
+            api: HidApi::new().unwrap(),
             device: None,
         };
         s.try_connect_device();
@@ -41,26 +38,24 @@ impl HID {
     }
 
     fn try_connect_device(&mut self) {
-        if let Ok(api) = hidapi::HidApi::new() {
-            self.device = api.device_list().find_map(|d| {
-                if d.vendor_id() == self.config.vid
-                    && d.product_id() == self.config.pid
-                    && d.interface_number() == self.config.interface
-                {
-                    println!(
-                        "Ongeki IO HID: {} 已连接",
-                        d.product_string().unwrap_or_default()
-                    );
-                    return d.open_device(&api).ok();
-                }
-                None
-            });
-        }
+        self.api.refresh_devices().unwrap();
+        self.device = self.api.device_list().find_map(|d| {
+            if d.vendor_id() == self.config.vid
+                && d.product_id() == self.config.pid
+                && d.interface_number() == self.config.interface
+            {
+                println!(
+                    "Ongeki IO HID: {} 已连接",
+                    d.product_string().unwrap_or_default()
+                );
+                return d.open_device(&self.api).ok();
+            }
+            None
+        });
     }
 }
 
-#[cast_to]
-impl PollDriver for HID {
+impl PollDriver for HidIO {
     fn poll(&mut self) -> HResult {
         let Some(ref device) = self.device else {
             self.try_connect_device();
@@ -112,16 +107,13 @@ impl PollDriver for HID {
     }
 }
 
-#[cast_to]
-impl LeverDriver for HID {
+impl LeverDriver for HidIO {
     fn lever(&self) -> i16 {
-
         self.lever
     }
 }
 
-#[cast_to]
-impl ButtonDriver for HID {
+impl ButtonDriver for HidIO {
     fn op_btns(&self) -> u8 {
         0
     }
@@ -135,8 +127,7 @@ impl ButtonDriver for HID {
     }
 }
 
-#[cast_to]
-impl LEDriver for HID {
+impl LEDriver for HidIO {
     fn set_led(&mut self, data: u32) {
         let Some(ref device) = self.device else {
             self.try_connect_device();
@@ -175,5 +166,3 @@ impl LEDriver for HID {
         }
     }
 }
-
-impl Driver for HID {}
