@@ -104,34 +104,35 @@ impl PollDriver for HidIO {
             self.right_btns |= GameBtn::Menu as u8
         }
 
+        self.lever = -20 * i16::from_be_bytes([data[10], data[11]]);
         // Auto Calculation
-        let lever_meta = i16::from_be_bytes([data[10], data[11]]);
-        let lever_dir: i8 = if self.config.lever_left < self.config.lever_right {
-            1
-        } else {
-            -1
-        };
-        if lever_dir == -1 {
-            if lever_meta < self.config.lever_left {
-                self.config.lever_left = lever_meta;
-            }
-            if lever_meta > self.config.lever_right {
-                self.config.lever_right = lever_meta;
-            }
-        }
-        if lever_dir == 1 {
-            if lever_meta > self.config.lever_left {
-                self.config.lever_left = lever_meta;
-            }
-            if lever_meta < self.config.lever_right {
-                self.config.lever_right = lever_meta;
-            }
-        }
+        // let lever_meta = i16::from_be_bytes([data[10], data[11]]);
+        // let lever_dir: i8 = if self.config.lever_left < self.config.lever_right {
+        //     1
+        // } else {
+        //     -1
+        // };
+        // if lever_dir == -1 {
+        //     if lever_meta < self.config.lever_left {
+        //         self.config.lever_left = lever_meta;
+        //     }
+        //     if lever_meta > self.config.lever_right {
+        //         self.config.lever_right = lever_meta;
+        //     }
+        // }
+        // if lever_dir == 1 {
+        //     if lever_meta > self.config.lever_left {
+        //         self.config.lever_left = lever_meta;
+        //     }
+        //     if lever_meta < self.config.lever_right {
+        //         self.config.lever_right = lever_meta;
+        //     }
+        // }
 
-        if self.config.lever_right != self.config.lever_left
-        {
-            self.lever = map(lever_meta, self.config.lever_left, self.config.lever_right, -20000, 20000);
-        }
+        // if self.config.lever_right != self.config.lever_left
+        // {
+        //     self.lever = map(lever_meta, self.config.lever_left, self.config.lever_right, -20000, 20000);
+        // }
 
         HResult::Ok
     }
