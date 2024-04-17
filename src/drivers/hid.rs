@@ -5,17 +5,11 @@ use crate::{
     enums::{GameBtn, HResult},
 };
 
-use byteorder::WriteBytesExt;
-use hidapi::HidDevice;
-use intertrait::cast_to;
-use pretty_hex::PrettyHex;
-
 use super::{ButtonDriver, Driver, LEDriver, LeverDriver, PollDriver};
 
 use byteorder::WriteBytesExt;
 use dyn_dyn::dyn_dyn_impl;
 use hidapi_rusb::{HidApi, HidDevice};
-use std::io::{Cursor, Write};
 
 pub struct HidIO {
     lever: i16,
@@ -112,7 +106,7 @@ impl PollDriver for HidIO {
 
         // Auto Calculation
         let lever_meta = i16::from_be_bytes([data[10], data[11]]);
-        let lever_dir: i8 = if self.config.lever_left - self.config.lever_right < 0 {
+        let lever_dir: i8 = if self.config.lever_left < self.config.lever_right {
             1
         } else {
             -1
