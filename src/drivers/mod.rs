@@ -1,7 +1,7 @@
 use intertrait::cast::*;
 use intertrait::*;
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
+use std::fs::{self, File};
+use std::io::Write;
 use std::ops::{Deref, DerefMut};
 
 use crate::config::Config;

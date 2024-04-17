@@ -1,8 +1,4 @@
-use std::{
-    io::{Cursor, Write},
-    sync::mpsc::{self, Receiver},
-    thread,
-};
+use std::io::{Cursor, Write};
 
 use crate::{
     config::HIDConfig,
@@ -12,7 +8,6 @@ use crate::{
 use byteorder::WriteBytesExt;
 use hidapi::HidDevice;
 use intertrait::cast_to;
-use pretty_hex::PrettyHex;
 
 use super::{ButtonDriver, Driver, LEDriver, LeverDriver, PollDriver};
 
@@ -68,6 +63,8 @@ impl PollDriver for HID {
         };
 
         let mut data = [0u8; 64];
+        self.left_btns = 0;
+        self.right_btns = 0;
         if let Err(e) = device.read(&mut data) {
             println!("Ongeki IO HID: 设备断开 {e}");
             self.device = None;
@@ -106,16 +103,47 @@ impl PollDriver for HID {
             self.right_btns |= GameBtn::Menu as u8
         }
 
-        self.lever = i16::from_be_bytes([data[10], data[11]]);
+        // Auto Calculation
+        let lever_meta = i16::from_be_bytes([data[10], data[11]]);
+        let lever_dir: i8 = if self.config.lever_left - self.config.lever_right < 0 {
+            1
+        } else {
+            -1
+        };
+        if lever_dir == -1 {
+            if lever_meta < self.config.lever_left {
+                self.config.lever_left = lever_meta;
+            }
+            if lever_meta > self.config.lever_right {
+                self.config.lever_right = lever_meta;
+            }
+        }
+        if lever_dir == 1 {
+            if lever_meta > self.config.lever_left {
+                self.config.lever_left = lever_meta;
+            }
+            if lever_meta < self.config.lever_right {
+                self.config.lever_right = lever_meta;
+            }
+        }
+
+        if self.config.lever_right != self.config.lever_left
+        {
+            self.lever = map(lever_meta, self.config.lever_left, self.config.lever_right, -20000, 20000);
+        }
 
         HResult::Ok
     }
 }
 
+fn map(x: i16, in_min: i16, in_max: i16, out_min: i16, out_max: i16) -> i16 {
+    (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+}
+
+
 #[cast_to]
 impl LeverDriver for HID {
     fn lever(&self) -> i16 {
-
         self.lever
     }
 }

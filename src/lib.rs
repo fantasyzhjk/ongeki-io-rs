@@ -7,7 +7,6 @@ use windows::Win32::System::Console;
 
 use enums::HResult;
 
-use crate::config::Config;
 
 mod config;
 mod drivers;
