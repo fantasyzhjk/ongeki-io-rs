@@ -23,7 +23,7 @@ pub extern "C" fn mu3_io_get_api_version() -> u16 {
 
 #[no_mangle]
 pub extern "C" fn mu3_io_init() -> HResult {
-    unsafe { Console::AttachConsole(Console::ATTACH_PARENT_PROCESS).unwrap() };
+    unsafe { Console::AttachConsole(Console::ATTACH_PARENT_PROCESS).unwrap_or_default() };
     println!("Ongeki IO: 启动！");
     
     let mut drivers = DRIVERS.write().unwrap();

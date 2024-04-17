@@ -1,23 +1,25 @@
-use intertrait::cast::*;
-use intertrait::*;
+use dyn_dyn::{dyn_dyn_base, dyn_dyn_cast};
 use std::fs::{self, File};
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
 
 use crate::config::Config;
-use crate::drivers::hid::HID;
+use crate::drivers::hid::HidIO;
 use crate::enums::HResult;
 
-trait Driver: CastFrom {}
+#[dyn_dyn_base]
+trait Driver: Sync + Send {}
 
+
+
+mod hid;
 mod keyboard;
 mod led_debug;
 mod mouse;
-mod hid;
 
-use self::keyboard::KeyBoard;
+use self::keyboard::KeyBoardIO;
 use self::led_debug::LEDebug;
-use self::mouse::Mouse;
+use self::mouse::MouseIO;
 
 trait PollDriver {
     fn poll(&mut self) -> HResult;
@@ -37,7 +39,7 @@ trait LEDriver {
     fn set_led(&mut self, data: u32);
 }
 
-pub struct Drivers(Vec<Box<dyn Driver + Sync + Send>>);
+pub struct Drivers(Vec<Box<dyn Driver>>);
 
 impl Drivers {
     pub fn new() -> Self {
@@ -53,27 +55,29 @@ impl Drivers {
             println!("Ongeki IO: 使用配置文件\n{:#?}", config);
         } else {
             let mut f = File::create(CONFIG_PATH).unwrap();
-            f.write_all(toml::to_string_pretty(&config).unwrap().as_bytes()).unwrap();
+            f.write_all(toml::to_string_pretty(&config).unwrap().as_bytes())
+                .unwrap();
             println!("Ongeki IO: 未发现配置文件，使用默认配置\n{:#?}", config);
         }
 
         if config.keyboard.enabled {
-            self.0.push(Box::new(KeyBoard::new(config.keyboard.clone())));
+            self.0
+                .push(Box::new(KeyBoardIO::new(config.keyboard.clone())));
         }
         if config.mouse.enabled {
-            self.0.push(Box::new(Mouse::new()));
+            self.0.push(Box::new(MouseIO::new()));
         }
         if config.led_debug.enabled {
             self.0.push(Box::new(LEDebug::new()));
         }
         if config.hid.enabled {
-            self.0.push(Box::new(HID::new(config.hid.clone())));
+            self.0.push(Box::new(HidIO::new(config.hid.clone())));
         }
     }
 
     pub fn poll(&mut self) {
         for driver in self.0.iter_mut() {
-            if let Some(d) = driver.deref_mut().cast::<dyn PollDriver>() {
+            if let Ok(d) = dyn_dyn_cast!(mut Driver => PollDriver, driver.deref_mut()) {
                 d.poll();
             }
         }
@@ -82,7 +86,7 @@ impl Drivers {
     pub fn op_btns(&self) -> u8 {
         self.0
             .iter()
-            .filter_map(|d| d.deref().cast::<dyn ButtonDriver>())
+            .filter_map(|d| dyn_dyn_cast!(Driver => ButtonDriver, d.deref()).ok())
             .map(|d| d.op_btns())
             .fold(0, |r, v| r | v)
     }
@@ -90,7 +94,7 @@ impl Drivers {
     pub fn left_btns(&self) -> u8 {
         self.0
             .iter()
-            .filter_map(|d| d.deref().cast::<dyn ButtonDriver>())
+            .filter_map(|d| dyn_dyn_cast!(Driver => ButtonDriver, d.deref()).ok())
             .map(|d| d.left_btns())
             .fold(0, |r, v| r | v)
     }
@@ -98,7 +102,7 @@ impl Drivers {
     pub fn right_btns(&self) -> u8 {
         self.0
             .iter()
-            .filter_map(|d| d.deref().cast::<dyn ButtonDriver>())
+            .filter_map(|d| dyn_dyn_cast!(Driver => ButtonDriver, d.deref()).ok())
             .map(|d| d.right_btns())
             .fold(0, |r, v| r | v)
     }
@@ -106,14 +110,14 @@ impl Drivers {
     pub fn lever(&self) -> Option<i16> {
         self.0
             .iter()
-            .filter_map(|d| d.deref().cast::<dyn LeverDriver>())
+            .filter_map(|d| dyn_dyn_cast!(Driver => LeverDriver, d.deref()).ok())
             .map(|d| d.lever())
             .next()
     }
 
     pub fn set_led(&mut self, data: u32) {
         for driver in self.0.iter_mut() {
-            if let Some(d) = driver.deref_mut().cast::<dyn LEDriver>() {
+            if let Ok(d) = dyn_dyn_cast!(mut Driver => LEDriver, driver.deref_mut()) {
                 d.set_led(data);
             }
         }

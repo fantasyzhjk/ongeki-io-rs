@@ -1,18 +1,19 @@
 use crate::{config::KeyBoardConfig, enums::{GameBtn, HResult, OpBtn}};
-use intertrait::cast_to;
-use windows::Win32::UI::Input::KeyboardAndMouse;
-
 use super::{ButtonDriver, Driver, PollDriver};
 
+use dyn_dyn::dyn_dyn_impl;
+use windows::Win32::UI::Input::KeyboardAndMouse;
+
+
 #[derive(Debug)]
-pub struct KeyBoard {
+pub struct KeyBoardIO {
     op_btns: u8,
     left_btns: u8,
     right_btns: u8,
     config: KeyBoardConfig
 }
 
-impl KeyBoard {
+impl KeyBoardIO {
     pub fn new(config: KeyBoardConfig) -> Self {
         Self {
             op_btns: 0,
@@ -23,9 +24,10 @@ impl KeyBoard {
     }
 }
 
+#[dyn_dyn_impl(Driver, PollDriver, ButtonDriver)]
+impl Driver for KeyBoardIO {}
 
-#[cast_to]
-impl PollDriver for KeyBoard {
+impl PollDriver for KeyBoardIO {
     fn poll(&mut self) -> HResult {
         self.op_btns = 0;
 
@@ -77,8 +79,7 @@ impl PollDriver for KeyBoard {
     }
 }
 
-#[cast_to]
-impl ButtonDriver for KeyBoard {
+impl ButtonDriver for KeyBoardIO {
     fn op_btns(&self) -> u8 {
         self.op_btns
     }
@@ -91,8 +92,6 @@ impl ButtonDriver for KeyBoard {
         self.right_btns
     }
 }
-
-impl Driver for KeyBoard {}
 
 
 fn is_key_pressed(key: i32) -> bool {
