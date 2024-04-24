@@ -12,7 +12,7 @@ trait Driver: Sync + Send {}
 
 
 
-mod hid;
+pub mod hid;
 mod keyboard;
 mod led_debug;
 mod mouse;

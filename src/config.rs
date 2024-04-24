@@ -51,8 +51,8 @@ impl Default for Config {
                 vid: 0x2341,
                 pid: 0x8036,
                 interface: 1,
-                lever_left: i16::MAX,
-                lever_right: i16::MIN,
+                lever_left: i16::MIN,
+                lever_right: i16::MAX,
             },
             led_debug: LEDebugConfig { enabled: true },
         }

@@ -7,7 +7,6 @@ use windows::Win32::System::Console;
 
 use enums::HResult;
 
-
 mod config;
 mod drivers;
 mod enums;
@@ -24,8 +23,20 @@ pub extern "C" fn mu3_io_get_api_version() -> u16 {
 #[no_mangle]
 pub extern "C" fn mu3_io_init() -> HResult {
     unsafe { Console::AttachConsole(Console::ATTACH_PARENT_PROCESS).unwrap_or_default() };
+    std::panic::set_hook(Box::new(|panic_info| {
+        better_panic::Settings::auto()
+            .most_recent_first(false)
+            .lineno_suffix(true)
+            .create_panic_handler()(panic_info);
+
+        println!("按回车退出");
+        std::io::stdin().read_line(&mut String::new()).unwrap();
+
+        std::process::exit(1);
+    }));
+
     println!("Ongeki IO: 启动！");
-    
+
     let mut drivers = DRIVERS.write().unwrap();
     drivers.init();
 
@@ -71,4 +82,17 @@ pub extern "C" fn mu3_io_get_lever(pos: *mut i16) {
 pub extern "C" fn mu3_io_set_led(data: u32) {
     let mut drivers = DRIVERS.write().unwrap();
     drivers.set_led(data);
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::drivers::hid;
+
+    #[test]
+    fn map_test() {
+        let temp = hid::map(12, -280, 280, -20000, 20000);
+        assert_eq!(temp, 857);
+    }
+
 }
