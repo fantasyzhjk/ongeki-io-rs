@@ -9,14 +9,13 @@ use super::{ButtonDriver, Driver, LEDriver, LeverDriver, PollDriver};
 
 use byteorder::WriteBytesExt;
 use dyn_dyn::dyn_dyn_impl;
-use hidapi_rusb::{HidApi, HidDevice};
+use hidapi::{HidApi, HidDevice};
 
 pub struct HidIO {
     lever: i16,
     left_btns: u8,
     right_btns: u8,
     config: HIDConfig,
-    api: HidApi,
     device: Option<HidDevice>,
 }
 
@@ -31,7 +30,6 @@ impl HidIO {
             left_btns: 0,
             right_btns: 0,
             config,
-            api: HidApi::new().unwrap(),
             device: None,
         };
         s.try_connect_device();
@@ -39,20 +37,20 @@ impl HidIO {
     }
 
     fn try_connect_device(&mut self) {
-        self.api.refresh_devices().unwrap();
-        self.device = self.api.device_list().find_map(|d| {
-            if d.vendor_id() == self.config.vid
-                && d.product_id() == self.config.pid
-                && d.interface_number() == self.config.interface
-            {
-                println!(
-                    "Ongeki IO HID: {} 已连接",
-                    d.product_string().unwrap_or_default()
-                );
-                return d.open_device(&self.api).ok();
-            }
-            None
-        });
+        let api = HidApi::new().unwrap();
+        self.device = api
+            .device_list()
+            .filter(|d| d.vendor_id() == self.config.vid && d.product_id() == self.config.pid)
+            .find_map(|d| {
+                if d.interface_number() == self.config.interface {
+                    println!(
+                        "Ongeki IO HID: {} 已连接",
+                        d.product_string().unwrap_or_default()
+                    );
+                    return d.open_device(&api).ok();
+                }
+                None
+            });
     }
 }
 
@@ -107,20 +105,14 @@ impl PollDriver for HidIO {
         // self.lever = -20 * i16::from_be_bytes([data[10], data[11]]);
         // Auto Calculation
         let lever_meta = i16::from_be_bytes([data[10], data[11]]);
-        let lever_dir: i8 = if self.config.lever_left > self.config.lever_right {
-            1
-        } else {
-            -1
-        };
-        if lever_dir == -1 {
-            if lever_meta < self.config.lever_left {
+        if self.config.lever_left > self.config.lever_right {
+            if lever_meta > self.config.lever_left {
                 self.config.lever_left = lever_meta;
             }
-            if lever_meta > self.config.lever_right {
+            if lever_meta < self.config.lever_right {
                 self.config.lever_right = lever_meta;
             }
-        }
-        if lever_dir == 1 {
+        } else {
             if lever_meta < self.config.lever_left {
                 self.config.lever_left = lever_meta;
             }
@@ -130,7 +122,7 @@ impl PollDriver for HidIO {
         }
 
         if self.config.lever_right != self.config.lever_left {
-            self.lever = - map(
+            self.lever = map(
                 i32::from(lever_meta),
                 i32::from(self.config.lever_left),
                 i32::from(self.config.lever_right),

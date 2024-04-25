@@ -22,7 +22,7 @@ pub extern "C" fn mu3_io_get_api_version() -> u16 {
 
 #[no_mangle]
 pub extern "C" fn mu3_io_init() -> HResult {
-    unsafe { Console::AttachConsole(Console::ATTACH_PARENT_PROCESS).unwrap_or_default() };
+    unsafe { let _ = Console::AttachConsole(Console::ATTACH_PARENT_PROCESS); }
     std::panic::set_hook(Box::new(|panic_info| {
         better_panic::Settings::auto()
             .most_recent_first(false)
