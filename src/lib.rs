@@ -79,9 +79,21 @@ pub extern "C" fn mu3_io_get_lever(pos: *mut i16) {
 }
 
 #[no_mangle]
+pub extern "C" fn mu3_io_led_init() -> HResult {
+    HResult::Ok
+}
+
+#[no_mangle]
 pub extern "C" fn mu3_io_set_led(data: u32) {
     let mut drivers = DRIVERS.write().unwrap();
     drivers.set_led(data);
+}
+
+#[no_mangle]
+pub extern "C" fn mu3_io_led_set_colors(board: u8, rgb: *mut u8) {
+    let mut drivers = DRIVERS.write().unwrap();
+    let data =  unsafe { std::slice::from_raw_parts(rgb, 61) };
+    drivers.set_led_new(board, data);
 }
 
 #[cfg(test)]
