@@ -42,14 +42,12 @@ impl LEDriver for LEDebug {
 
 
 impl LEDriverNew for LEDebug {
-    fn set_led_new(&mut self, board: u8, rgb: &[u8]) {
+    fn set_led_new(&mut self, board: u8, rgb: &[rgb::RGB8]) {
         println!("Ongeki IO: Set LED Board {board}");
-        println!("rgb: {} {} {}", rgb[0], rgb[1], rgb[2]);
-        println!("rgb: {} {} {}", rgb[3], rgb[4], rgb[5]);
-        println!("rgb: {} {} {}", rgb[6], rgb[7], rgb[8]);
-        println!("rgb: {} {} {}", rgb[9], rgb[10], rgb[11]);
-        println!("rgb: {} {} {}", rgb[12], rgb[13], rgb[14]);
-        println!("rgb: {} {} {}", rgb[15], rgb[16], rgb[17]);
+        for rgb in rgb {
+            print!("{:X} ", rgb);
+        }
+        println!();
     }
 }
 

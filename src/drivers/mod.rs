@@ -40,7 +40,7 @@ trait LEDriver {
 }
 
 trait LEDriverNew {
-    fn set_led_new(&mut self, board: u8, rgb: &[u8]);
+    fn set_led_new(&mut self, board: u8, rgb: &[rgb::RGB8]);
 }
 
 pub struct Drivers(Vec<Box<dyn Driver>>);
@@ -127,7 +127,7 @@ impl Drivers {
         }
     }
 
-    pub fn set_led_new(&mut self, board: u8, rgb: &[u8]) {
+    pub fn set_led_new(&mut self, board: u8, rgb: &[rgb::RGB8]) {
         for driver in self.0.iter_mut() {
             if let Ok(d) = dyn_dyn_cast!(mut Driver => LEDriverNew, driver.deref_mut()) {
                 d.set_led_new(board, rgb);

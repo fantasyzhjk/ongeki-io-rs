@@ -5,7 +5,7 @@ use crate::{
     enums::{GameBtn, HResult},
 };
 
-use super::{ButtonDriver, Driver, LEDriver, LeverDriver, PollDriver};
+use super::{ButtonDriver, Driver, LEDriver, LeverDriver, PollDriver, LEDriverNew};
 
 use byteorder::WriteBytesExt;
 use dyn_dyn::dyn_dyn_impl;
@@ -19,7 +19,7 @@ pub struct HidIO {
     device: Option<HidDevice>,
 }
 
-#[dyn_dyn_impl(Driver, PollDriver, ButtonDriver, LeverDriver, LEDriver)]
+#[dyn_dyn_impl(Driver, PollDriver, ButtonDriver, LeverDriver, LEDriver, LEDriverNew)]
 impl Driver for HidIO {}
 unsafe impl Sync for HidIO {}
 
@@ -47,7 +47,9 @@ impl HidIO {
                         "Ongeki IO HID: {} 已连接",
                         d.product_string().unwrap_or_default()
                     );
-                    return d.open_device(&api).ok();
+                    return d.open_device(&api).inspect(|d| {
+                        d.set_blocking_mode(false).unwrap();
+                    }).ok();
                 }
                 None
             });
@@ -121,22 +123,36 @@ impl PollDriver for HidIO {
             }
         }
 
+        // 映射前动态交换左右边界，确保方向正确
+        let (in_min, in_max) = if self.config.lever_left < self.config.lever_right {
+            (self.config.lever_left, self.config.lever_right)
+        } else {
+            // 如果校准值方向颠倒，交换它们
+            (self.config.lever_right, self.config.lever_left)
+        };
+
         if self.config.lever_right != self.config.lever_left {
             self.lever = map(
                 i32::from(lever_meta),
-                i32::from(self.config.lever_left),
-                i32::from(self.config.lever_right),
-                -20000,
-                20000,
-            );
+                i32::from(in_min),
+                i32::from(in_max),
+                -32768,
+                32768,
+            ) as i16;
         }
 
         HResult::Ok
     }
 }
 
-pub(crate) fn map(x: i32, in_min: i32, in_max: i32, out_min: i32, out_max: i32) -> i16 {
-    ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) as i16
+pub(crate) fn map(x: i32, in_min: i32, in_max: i32, out_min: i32, out_max: i32) -> i32 {
+    // 自动处理反向输入（例如 in_min > in_max）
+    let numerator = (x - in_min) * (out_max - out_min);
+    let denominator = in_max - in_min;
+    if denominator == 0 {
+        return out_min; // 避免除以零
+    }
+    numerator / denominator + out_min
 }
 
 impl LeverDriver for HidIO {
@@ -196,5 +212,49 @@ impl LEDriver for HidIO {
             println!("Ongeki IO HID: 设备断开 {e}");
             self.device = None;
         }
+    }
+}
+
+
+impl LEDriverNew for HidIO {
+    fn set_led_new(&mut self, board: u8, rgb: &[rgb::RGB8]) {
+        if board == 1 {
+            let Some(ref device) = self.device else {
+                self.try_connect_device();
+                return;
+            };
+    
+            let mut buf = Cursor::new([0u8; 65]);
+            buf.set_position(1);
+            buf.write_u8(0).unwrap();
+            buf.write_u8(100).unwrap();
+            buf.write_all(
+                &[
+                    rgb[0].r, rgb[0].g, rgb[0].b,
+                    rgb[1].r, rgb[1].g, rgb[1].b,
+                    rgb[2].r, rgb[2].g, rgb[2].b,
+                    rgb[3].r, rgb[3].g, rgb[3].b,
+                    rgb[4].r, rgb[4].g, rgb[4].b,
+                    rgb[5].r, rgb[5].g, rgb[5].b
+                ],
+            ).unwrap();
+
+            if let Err(e) = device.write(buf.get_ref()) {
+                println!("Ongeki IO HID: 设备断开 {e}");
+                self.device = None;
+            }
+        }
+    }
+}
+
+
+/// test
+#[cfg(test)]
+mod hid_test {
+    use super::map;
+    #[test]
+    fn map_test() {
+        let temp = map(12, -280, 280, -20000, 20000);
+        assert_eq!(temp, 857);
     }
 }

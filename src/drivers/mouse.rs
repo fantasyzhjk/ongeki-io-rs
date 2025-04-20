@@ -5,6 +5,8 @@ use windows::Win32::Foundation::POINT;
 use crate::drivers::{Driver, LeverDriver, PollDriver};
 use crate::enums::HResult;
 
+use super::hid;
+
 
 #[derive(Debug, Default)]
 pub struct MouseIO {
@@ -33,8 +35,10 @@ impl PollDriver for MouseIO {
                 mouse_x = screen_width;
             }
 
-            let x_norm = mouse_x as f64 / screen_width as f64;
-            let mouse_x = ((x_norm * 65536.) - 32767.) as i32;
+            // let x_norm = mouse_x as f64 / screen_width as f64;
+            // let mouse_x = ((x_norm * 65536.) - 32767.) as i32;
+
+            let mouse_x = hid::map(mouse_x, 0, screen_width, -32768, 32768);
 
             self.lever = mouse_x as i16;
         }
